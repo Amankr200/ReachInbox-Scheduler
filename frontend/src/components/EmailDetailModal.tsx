@@ -1,6 +1,6 @@
 import React from 'react';
 import { Email } from '../types';
-import { ArrowLeft, Star, Trash2, Archive, ExternalLink, MailCheck, Paperclip, FileText, Download } from 'lucide-react';
+import { ArrowLeft, Star, Trash2, Archive, ExternalLink, MailCheck, Paperclip, FileText, Download, Image as ImageIcon } from 'lucide-react';
 
 interface EmailDetailModalProps {
   email: Email | null;
@@ -137,6 +137,37 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({
           <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed whitespace-pre-line pt-2">
             {email.body}
           </div>
+
+          {/* Inline Image Previews for Image Attachments */}
+          {email.attachments &&
+            email.attachments.some(
+              (att) => att.contentType?.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(att.filename)
+            ) && (
+              <div className="space-y-3 pt-2">
+                {email.attachments
+                  .filter(
+                    (att) => att.contentType?.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(att.filename)
+                  )
+                  .map((imgAtt, idx) => (
+                    <div key={idx} className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50 max-w-md shadow-xs">
+                      {imgAtt.content && (
+                        <img
+                          src={`data:${imgAtt.contentType || 'image/png'};base64,${imgAtt.content}`}
+                          alt={imgAtt.filename}
+                          className="max-h-72 w-full object-contain bg-white"
+                        />
+                      )}
+                      <div className="px-3 py-1.5 bg-gray-50 flex items-center justify-between border-t border-gray-100 text-xs text-gray-500">
+                        <span className="truncate flex items-center gap-1">
+                          <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                          {imgAtt.filename}
+                        </span>
+                        <span>{Math.round(imgAtt.size / 1024)} KB</span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
 
           {/* Attachments Section */}
           {email.attachments && email.attachments.length > 0 && (

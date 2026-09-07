@@ -269,7 +269,7 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
         where: { userId: user.id },
         orderBy: { createdAt: 'desc' },
       });
-      return res.json({ emails: allEmails });
+      return res.json({ emails: allEmails.map(formatEmail) });
     }
 
     // Try Elasticsearch search first
@@ -294,7 +294,7 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
 
       const hits = esResult.hits.hits.map((hit) => hit._source);
       if (hits.length > 0) {
-        return res.json({ source: 'elasticsearch', emails: hits });
+        return res.json({ source: 'elasticsearch', emails: hits.map(formatEmail) });
       }
     } catch (esError) {
       console.warn(' Elasticsearch search query failed, falling back to PostgreSQL:', (esError as Error).message);
@@ -313,7 +313,7 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    return res.json({ source: 'postgres', emails: dbEmails });
+    return res.json({ source: 'postgres', emails: dbEmails.map(formatEmail) });
   } catch (error) {
     console.error(' Search API error:', error);
     return res.status(500).json({ error: 'Search failed' });

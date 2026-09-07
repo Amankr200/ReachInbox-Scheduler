@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+*.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db

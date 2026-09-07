@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_ROOT } from '../services/api';
 
 interface LoginProps {
   onLoginSuccess: (token: string) => void;
@@ -11,7 +12,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   const handleGoogleLogin = () => {
     // Redirect to backend Google OAuth route
-    window.location.href = 'http://localhost:5000/api/auth/google';
+    window.location.href = `${API_ROOT}/api/auth/google`;
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -19,7 +20,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     try {
       // Call dev-login endpoint for fast local testing/demo
-      const res = await fetch('http://localhost:5000/api/auth/dev-login', {
+      const res = await fetch(`${API_ROOT}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email || 'oliver.brown@reachinbox.ai', name: 'Oliver Brown' }),

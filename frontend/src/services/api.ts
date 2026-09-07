@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { Email, Sender, User, SlackStatus } from '../types';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -14,6 +16,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+export const API_ROOT = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export async function getMe(): Promise<{ user: User }> {
   const res = await api.get('/auth/me');

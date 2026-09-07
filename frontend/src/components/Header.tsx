@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, SlidersHorizontal, RotateCw, ExternalLink } from 'lucide-react';
+import { API_ROOT } from '../services/api';
 
 interface HeaderProps {
   searchQuery: string;
@@ -44,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Quick Link to BullBoard Queue Dashboard */}
         <a
-          href="http://localhost:5000/admin/queues"
+          href={`${API_ROOT}/admin/queues`}
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-xs rounded-full transition-colors ml-2"

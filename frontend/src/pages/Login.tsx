@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_ROOT } from '../services/api';
-import { AlertCircle, ArrowRight } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: (token: string) => void;
@@ -24,42 +24,22 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     } else if (authError) {
       const decodedErr = decodeURIComponent(authError);
       if (decodedErr === 'missing_client_secret') {
-        setErrorMessage('GOOGLE_CLIENT_SECRET is missing on Render. Please verify Render Environment Variables or use Instant One-Click Login below.');
+        setErrorMessage('GOOGLE_CLIENT_SECRET is missing in Render environment variables.');
       } else if (decodedErr === 'token_exchange_failed') {
-        setErrorMessage('Google token exchange failed. Please check GOOGLE_CLIENT_SECRET on Render or use Instant One-Click Login below.');
+        setErrorMessage('Google token exchange failed. Please verify GOOGLE_CLIENT_SECRET on Render.');
       } else if (decodedErr === 'no_code') {
         setErrorMessage('Google did not return an authorization code.');
       } else {
-        setErrorMessage(`Google OAuth: ${decodedErr}. You can use Instant One-Click Login below!`);
+        setErrorMessage(`Google OAuth error: ${decodedErr}`);
       }
     } else if (authMode === 'dev') {
-      setErrorMessage('Google OAuth credentials not configured on backend. Use Instant One-Click Login below.');
+      setErrorMessage('Google OAuth credentials not configured on backend.');
     }
   }, [onLoginSuccess]);
 
   const handleGoogleLogin = () => {
     setErrorMessage(null);
     window.location.href = `${API_ROOT}/api/auth/google`;
-  };
-
-  const handleQuickLogin = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_ROOT}/api/auth/dev-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'oliver.brown@reachinbox.ai', name: 'Oliver Brown' }),
-      });
-      const data = await res.json();
-      if (data.token) {
-        onLoginSuccess(data.token);
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-      setErrorMessage('Failed to connect to backend. Please check connection.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -69,15 +49,17 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       const res = await fetch(`${API_ROOT}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email || 'oliver.brown@reachinbox.ai', name: 'Oliver Brown' }),
+        body: JSON.stringify({ email: email || 'oliver.brown@reachinbox.ai', name: email ? email.split('@')[0] : 'Oliver Brown' }),
       });
       const data = await res.json();
       if (data.token) {
         onLoginSuccess(data.token);
+      } else {
+        setErrorMessage(data.error || 'Failed to authenticate.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      setErrorMessage('Failed to log in.');
+      setErrorMessage('Failed to connect to backend server.');
     } finally {
       setLoading(false);
     }
@@ -102,7 +84,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         <button
           onClick={handleGoogleLogin}
           type="button"
-          className="w-full py-2.5 px-4 bg-[#E8F5E9] hover:bg-[#D7ECD9] text-[#1B5E20] font-medium text-sm rounded-full flex items-center justify-center gap-3 transition-colors border border-[#C8E6C9] mb-3 cursor-pointer"
+          className="w-full py-2.5 px-4 bg-[#E8F5E9] hover:bg-[#D7ECD9] text-[#1B5E20] font-medium text-sm rounded-full flex items-center justify-center gap-3 transition-colors border border-[#C8E6C9] mb-4 cursor-pointer"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -123,17 +105,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             />
           </svg>
           Login with Google
-        </button>
-
-        {/* 1-Click Instant Demo Login Button */}
-        <button
-          onClick={handleQuickLogin}
-          type="button"
-          disabled={loading}
-          className="w-full py-2.5 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium text-xs rounded-full flex items-center justify-center gap-2 transition-colors border border-gray-200 mb-4 cursor-pointer"
-        >
-          <span>🚀 Instant One-Click Login (Demo)</span>
-          <ArrowRight className="w-3.5 h-3.5" />
         </button>
 
         {/* Divider */}

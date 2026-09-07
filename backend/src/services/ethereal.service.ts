@@ -18,6 +18,9 @@ export async function getDefaultEtherealTransporter() {
         user: defaultAccount.user,
         pass: defaultAccount.pass,
       },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
     });
     console.log(` Created default Ethereal test SMTP account: ${defaultAccount.user}`);
     return { transporter: defaultTransporter, account: defaultAccount };

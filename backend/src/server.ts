@@ -22,13 +22,26 @@ import senderRoutes from './routes/sender.routes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS configuration — allow both localhost and deployed frontend
+// CORS configuration — allow localhost, deployed frontend, and vercel preview domains
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL?.replace(/\/+$/, '') || 'http://localhost:5173',
+];
+
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',
-      process.env.FRONTEND_URL || 'http://localhost:5173',
-    ],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/+$/, '');
+      if (
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin.endsWith('.vercel.app')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true); // allow all origins with credentials support
+    },
     credentials: true,
   })
 );

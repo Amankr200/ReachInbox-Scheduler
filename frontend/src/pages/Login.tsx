@@ -22,15 +22,18 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(token);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (authError) {
-      if (authError === 'token_exchange_failed') {
-        setErrorMessage('Google token exchange failed. Please verify GOOGLE_CLIENT_SECRET on Render.');
-      } else if (authError === 'no_code') {
+      const decodedErr = decodeURIComponent(authError);
+      if (decodedErr === 'missing_client_secret') {
+        setErrorMessage('GOOGLE_CLIENT_SECRET is missing on Render. Please verify Render Environment Variables or use Instant One-Click Login below.');
+      } else if (decodedErr === 'token_exchange_failed') {
+        setErrorMessage('Google token exchange failed. Please check GOOGLE_CLIENT_SECRET on Render or use Instant One-Click Login below.');
+      } else if (decodedErr === 'no_code') {
         setErrorMessage('Google did not return an authorization code.');
       } else {
-        setErrorMessage(`Google authentication notice: ${authError}. You can use Quick Login below!`);
+        setErrorMessage(`Google OAuth: ${decodedErr}. You can use Instant One-Click Login below!`);
       }
     } else if (authMode === 'dev') {
-      setErrorMessage('Google OAuth credentials not configured on backend. Use Direct Login below.');
+      setErrorMessage('Google OAuth credentials not configured on backend. Use Instant One-Click Login below.');
     }
   }, [onLoginSuccess]);
 

@@ -150,6 +150,10 @@ export function setupEmailWorker() {
     console.error(` Job ${job?.id} failed:`, err.message);
   });
 
+  worker.on('error', (err) => {
+    console.error(' BullMQ Email Worker error:', err.message);
+  });
+
   console.log(` BullMQ Email Worker started with concurrency level: ${concurrency}`);
   return worker;
 }

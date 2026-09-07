@@ -36,3 +36,8 @@ export async function addEmailJob(data: EmailJobData, delayMs: number) {
 
   return job;
 }
+
+emailQueue.on('error', (err) => {
+  console.error(' BullMQ EmailQueue error:', err.message);
+});
+

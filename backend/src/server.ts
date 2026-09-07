@@ -8,11 +8,12 @@ import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 
-import { ensureRedisServer } from './config/redis';
-import { emailQueue } from './queues/email.queue';
+import { ensureRedisServer, redisClient } from './config/redis';
+import { emailQueue, addEmailJob } from './queues/email.queue';
 import { setupEmailWorker } from './workers/email.worker';
 import { initElasticsearch } from './config/elasticsearch';
 import { getDefaultEtherealTransporter } from './services/ethereal.service';
+import { prisma } from './db/prisma';
 
 import authRoutes from './routes/auth.routes';
 import emailRoutes from './routes/email.routes';
@@ -66,11 +67,20 @@ app.use('/api/emails', emailRoutes);
 app.use('/api/slack', slackRoutes);
 app.use('/api/senders', senderRoutes);
 
-// Health check endpoint
-app.get('/health', (req: express.Request, res: express.Response) => {
+// Health check endpoint with real-time Redis connection diagnostic
+app.get('/health', async (req: express.Request, res: express.Response) => {
+  let redisStatus = 'disconnected';
+  try {
+    const pong = await redisClient.ping();
+    redisStatus = pong === 'PONG' ? 'connected' : pong;
+  } catch (err) {
+    redisStatus = `error: ${(err as Error).message}`;
+  }
+
   res.json({
     status: 'OK',
     service: 'ReachInbox Email Scheduler Backend',
+    redis: redisStatus,
     timestamp: new Date().toISOString(),
   });
 });
@@ -88,6 +98,39 @@ async function main() {
 
     // 4. Start BullMQ Worker process
     setupEmailWorker();
+
+    // 5. Reconcile any pending SCHEDULED emails from DB
+    try {
+      const pendingEmails = await prisma.email.findMany({
+        where: { status: 'SCHEDULED' },
+      });
+      if (pendingEmails.length > 0) {
+        console.log(` Found ${pendingEmails.length} pending scheduled email(s). Enqueueing...`);
+        for (const email of pendingEmails) {
+          const delayMs = Math.max(0, new Date(email.scheduledAt).getTime() - Date.now());
+          const job = await addEmailJob(
+            {
+              emailId: email.id,
+              userId: email.userId,
+              senderId: email.senderId || undefined,
+              recipient: email.recipient,
+              subject: email.subject,
+              body: email.body,
+              delayMs: email.delayMs,
+              hourlyLimit: email.hourlyLimit,
+            },
+            delayMs
+          );
+          await prisma.email.update({
+            where: { id: email.id },
+            data: { bullJobId: job.id },
+          });
+          console.log(` Enqueued email ${email.id} to BullMQ job ${job.id}`);
+        }
+      }
+    } catch (recErr) {
+      console.warn(' Email reconciliation notice:', (recErr as Error).message);
+    }
 
     app.listen(PORT, () => {
       console.log(` Server running on http://localhost:${PORT}`);

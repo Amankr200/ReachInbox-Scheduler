@@ -99,6 +99,14 @@ async function main() {
     // 4. Start BullMQ Worker process
     setupEmailWorker();
 
+    // Ensure DB columns exist on SQLite (for live migrations without restart friction)
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Email" ADD COLUMN "isStarred" BOOLEAN DEFAULT 0;`);
+    } catch {}
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Email" ADD COLUMN "attachments" TEXT;`);
+    } catch {}
+
     // 5. Reconcile any pending SCHEDULED or stuck PROCESSING emails from DB
     try {
       const pendingEmails = await prisma.email.findMany({

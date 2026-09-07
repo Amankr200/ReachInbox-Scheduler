@@ -41,7 +41,7 @@ const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullMQAdapter(emailQueue)],
+  queues: [new BullMQAdapter(emailQueue) as any],
   serverAdapter: serverAdapter,
 });
 
@@ -54,7 +54,7 @@ app.use('/api/slack', slackRoutes);
 app.use('/api/senders', senderRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (req: express.Request, res: express.Response) => {
   res.json({
     status: 'OK',
     service: 'ReachInbox Email Scheduler Backend',

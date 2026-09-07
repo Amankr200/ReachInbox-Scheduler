@@ -228,9 +228,9 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
       where: {
         userId: user.id,
         OR: [
-          { recipient: { contains: query, mode: 'insensitive' } },
-          { subject: { contains: query, mode: 'insensitive' } },
-          { body: { contains: query, mode: 'insensitive' } },
+          { recipient: { contains: query } },
+          { subject: { contains: query } },
+          { body: { contains: query } },
         ],
       },
       orderBy: { createdAt: 'desc' },

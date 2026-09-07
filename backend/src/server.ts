@@ -99,15 +99,26 @@ async function main() {
     // 4. Start BullMQ Worker process
     setupEmailWorker();
 
-    // 5. Reconcile any pending SCHEDULED emails from DB
+    // 5. Reconcile any pending SCHEDULED or stuck PROCESSING emails from DB
     try {
       const pendingEmails = await prisma.email.findMany({
-        where: { status: 'SCHEDULED' },
+        where: {
+          status: { in: ['SCHEDULED', 'PROCESSING'] },
+        },
       });
       if (pendingEmails.length > 0) {
-        console.log(` Found ${pendingEmails.length} pending scheduled email(s). Enqueueing...`);
+        console.log(` Found ${pendingEmails.length} pending/stuck email(s). Re-enqueueing...`);
         for (const email of pendingEmails) {
           const delayMs = Math.max(0, new Date(email.scheduledAt).getTime() - Date.now());
+          let parsedAttachments = [];
+          if (email.attachments) {
+            try {
+              parsedAttachments = JSON.parse(email.attachments);
+            } catch {
+              parsedAttachments = [];
+            }
+          }
+
           const job = await addEmailJob(
             {
               emailId: email.id,
@@ -118,12 +129,13 @@ async function main() {
               body: email.body,
               delayMs: email.delayMs,
               hourlyLimit: email.hourlyLimit,
+              attachments: parsedAttachments,
             },
             delayMs
           );
           await prisma.email.update({
             where: { id: email.id },
-            data: { bullJobId: job.id },
+            data: { bullJobId: job.id, status: 'SCHEDULED' },
           });
           console.log(` Enqueued email ${email.id} to BullMQ job ${job.id}`);
         }

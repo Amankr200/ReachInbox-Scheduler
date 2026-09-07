@@ -78,12 +78,19 @@ export function setupEmailWorker() {
         const { transporter } = await getDefaultEtherealTransporter();
         const fromAddress = senderEmail || 'ReachInbox Scheduler <scheduler@reachinbox.ai>';
 
+        const mailAttachments = job.data.attachments?.map((att) => ({
+          filename: att.filename,
+          content: Buffer.from(att.content, 'base64'),
+          contentType: att.contentType,
+        }));
+
         const info = await transporter.sendMail({
           from: fromAddress,
           to: recipient,
           subject: subject,
           text: body,
           html: `<div style="font-family: sans-serif; padding: 20px; line-height: 1.6;">${body.replace(/\n/g, '<br/>')}</div>`,
+          attachments: mailAttachments,
         });
 
         messageId = info.messageId;

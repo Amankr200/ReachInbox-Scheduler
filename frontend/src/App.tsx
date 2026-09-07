@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Email } from './types';
-import { getMe, getScheduledEmails, getSentEmails, searchEmails } from './services/api';
+import { getMe, getScheduledEmails, getSentEmails, searchEmails, toggleStarEmail, deleteEmail } from './services/api';
 import { Login } from './pages/Login';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -83,6 +83,38 @@ export function App() {
     }
   };
 
+  const handleToggleStar = async (email: Email) => {
+    // Optimistic UI update
+    const updatedStarred = !email.isStarred;
+    const updateList = (list: Email[]) =>
+      list.map((e) => (e.id === email.id ? { ...e, isStarred: updatedStarred } : e));
+
+    setDisplayedEmails(updateList);
+    setScheduledEmails(updateList);
+    setSentEmails(updateList);
+    if (selectedEmail && selectedEmail.id === email.id) {
+      setSelectedEmail({ ...selectedEmail, isStarred: updatedStarred });
+    }
+
+    try {
+      await toggleStarEmail(email.id);
+    } catch (err) {
+      console.error('Failed to toggle star:', err);
+      // Revert on error
+      fetchEmails();
+    }
+  };
+
+  const handleDeleteEmail = async (email: Email) => {
+    try {
+      await deleteEmail(email.id);
+      setSelectedEmail(null);
+      fetchEmails();
+    } catch (err) {
+      console.error('Failed to delete email:', err);
+    }
+  };
+
   const handleLoginSuccess = (newToken: string) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
@@ -129,6 +161,7 @@ export function App() {
             loading={loading}
             activeTab={activeTab}
             onSelectEmail={(email) => setSelectedEmail(email)}
+            onToggleStar={handleToggleStar}
           />
         </div>
       </div>
@@ -137,6 +170,8 @@ export function App() {
       <EmailDetailModal
         email={selectedEmail}
         onClose={() => setSelectedEmail(null)}
+        onToggleStar={handleToggleStar}
+        onDelete={handleDeleteEmail}
       />
 
       {/* Compose Campaign Modal */}

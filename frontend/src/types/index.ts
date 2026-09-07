@@ -13,6 +13,13 @@ export interface Sender {
   hourlyLimit: number;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  size: number;
+  content?: string;
+}
+
 export interface Email {
   id: string;
   userId: string;
@@ -25,6 +32,8 @@ export interface Email {
   scheduledAt: string;
   sentAt?: string;
   createdAt: string;
+  isStarred?: boolean;
+  attachments?: EmailAttachment[];
 }
 
 export interface SlackStatus {

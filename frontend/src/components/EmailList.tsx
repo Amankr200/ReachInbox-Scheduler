@@ -1,12 +1,13 @@
 import React from 'react';
 import { Email } from '../types';
-import { Clock, Star } from 'lucide-react';
+import { Clock, Star, Paperclip } from 'lucide-react';
 
 interface EmailListProps {
   emails: Email[];
   loading: boolean;
   activeTab: 'scheduled' | 'sent';
   onSelectEmail: (email: Email) => void;
+  onToggleStar?: (email: Email, e: React.MouseEvent) => void;
 }
 
 export const EmailList: React.FC<EmailListProps> = ({
@@ -14,6 +15,7 @@ export const EmailList: React.FC<EmailListProps> = ({
   loading,
   activeTab,
   onSelectEmail,
+  onToggleStar,
 }) => {
   if (loading) {
     return (
@@ -57,6 +59,7 @@ export const EmailList: React.FC<EmailListProps> = ({
     <div className="divide-y divide-gray-100">
       {emails.map((email) => {
         const isScheduled = email.status === 'SCHEDULED' || email.status === 'PROCESSING';
+        const hasAttachments = email.attachments && email.attachments.length > 0;
 
         return (
           <div
@@ -90,6 +93,13 @@ export const EmailList: React.FC<EmailListProps> = ({
                 </div>
               )}
 
+              {/* Attachment Icon */}
+              {hasAttachments && (
+                <span className="flex items-center text-gray-400 flex-shrink-0" title={`${email.attachments!.length} attachment(s)`}>
+                  <Paperclip className="w-3.5 h-3.5" />
+                </span>
+              )}
+
               {/* Body snippet */}
               <span className="text-xs text-gray-400 truncate flex-1 min-w-0">
                 - {email.body}
@@ -98,7 +108,23 @@ export const EmailList: React.FC<EmailListProps> = ({
 
             {/* Star Icon */}
             <div className="flex items-center ml-4">
-              <Star className="w-4 h-4 text-gray-300 group-hover:text-amber-400 transition-colors" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleStar && onToggleStar(email, e);
+                }}
+                className="p-1 rounded-full hover:bg-gray-200/50 transition-colors"
+                title={email.isStarred ? 'Unstar' : 'Star'}
+              >
+                <Star
+                  className={`w-4 h-4 transition-colors ${
+                    email.isStarred
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-gray-300 group-hover:text-amber-400'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         );

@@ -54,6 +54,8 @@ model Email {
   attempts     Int       @default(0)
   delayMs      Int       @default(2000)
   hourlyLimit  Int       @default(100)
+  isStarred    Boolean   @default(false)
+  attachments  String?   // JSON-serialized array of { filename, contentType, size, content }
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }

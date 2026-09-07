@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
-import { Sender } from '../types';
+import { Sender, EmailAttachment } from '../types';
 import { getSenders, scheduleEmails, getSlackStatus, devConnectSlack } from '../services/api';
-import { X, Upload, Clock, Slack, CheckCircle, AlertCircle, Send, Paperclip } from 'lucide-react';
+import { X, Upload, Clock, Slack, CheckCircle, AlertCircle, Send, Paperclip, FileText, Image as ImageIcon } from 'lucide-react';
 
 interface ComposeModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   const [recipients, setRecipients] = useState<string[]>([]);
   const [subject, setSubject] = useState<string>('');
   const [body, setBody] = useState<string>('');
+  const [attachments, setAttachments] = useState<EmailAttachment[]>([]);
 
   // Schedule settings
   const [showSendLaterPopover, setShowSendLaterPopover] = useState<boolean>(false);
@@ -119,6 +120,40 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     });
   };
 
+  // General File Attachment Upload (PDF, Images, Docs)
+  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.size > 5 * 1024 * 1024) {
+        setError(`File "${file.name}" exceeds the 5MB size limit.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Content = (reader.result as string).split(',')[1];
+        setAttachments((prev) => [
+          ...prev,
+          {
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            size: file.size,
+            content: base64Content,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Quick Preset Handlers for "Send Later" popover (Matching Figma Screenshot 3)
   const setTomorrowPreset = (hour: number) => {
     const tomorrow = new Date();
@@ -175,6 +210,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         delay: delaySec * 1000,
         hourlyLimit,
         senderId: selectedSenderId || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
 
       setLoading(false);
@@ -199,10 +235,16 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* CSV Attachment Icon (Matching Figma top bar) */}
-            <label className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-full hover:bg-gray-100 cursor-pointer transition-colors" title="Attach CSV file">
-              <Paperclip className="w-5 h-5" />
+            {/* CSV Import */}
+            <label className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-full hover:bg-gray-100 cursor-pointer transition-colors" title="Import recipients from CSV">
+              <Upload className="w-5 h-5" />
               <input type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
+            </label>
+
+            {/* General File Attachment (PDF, Image) */}
+            <label className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-full hover:bg-gray-100 cursor-pointer transition-colors" title="Attach PDF, Image, or Document">
+              <Paperclip className="w-5 h-5" />
+              <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt" onChange={handleAttachmentUpload} className="hidden" />
             </label>
 
             {/* "Send Later" Clock Icon (Matching Figma top bar) */}
@@ -461,6 +503,49 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
               onChange={(e) => setBody(e.target.value)}
               className="w-full bg-[#F8F9FA] border border-gray-200 rounded-lg p-3 text-xs outline-none focus:border-emerald-500 resize-none font-sans"
             />
+
+            {/* Attachments Display & Add Button */}
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg text-xs font-medium cursor-pointer transition-colors border border-gray-200">
+                  <Paperclip className="w-3.5 h-3.5" />
+                  <span>Attach PDF / Image</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    onChange={handleAttachmentUpload}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-[11px] text-gray-400">Attach images, PDFs or documents up to 5MB</span>
+              </div>
+
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {attachments.map((att, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-medium"
+                    >
+                      <Paperclip className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      <span className="truncate max-w-[200px]">{att.filename}</span>
+                      <span className="text-[10px] text-emerald-600 font-normal">
+                        ({Math.round(att.size / 1024)} KB)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(idx)}
+                        className="text-emerald-600 hover:text-red-500 p-0.5 rounded transition-colors ml-1"
+                        title="Remove file"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Active Schedule Time Badge if set */}

@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { Email, Sender, User, SlackStatus } from '../types';
+import { Email, Sender, User, SlackStatus, EmailAttachment } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
+  ? `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api`
   : 'http://localhost:5000/api';
 
 const api = axios.create({
@@ -17,7 +17,9 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export const API_ROOT = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+export const API_ROOT = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/+$/, '')
+  : 'http://localhost:5000';
 
 export async function getMe(): Promise<{ user: User }> {
   const res = await api.get('/auth/me');
@@ -37,6 +39,7 @@ export async function scheduleEmails(payload: {
   delay?: number;
   hourlyLimit?: number;
   senderId?: string;
+  attachments?: EmailAttachment[];
 }): Promise<{ count: number; emails: Email[] }> {
   const res = await api.post('/emails/schedule', payload);
   return res.data;
@@ -49,6 +52,16 @@ export async function getScheduledEmails(): Promise<{ emails: Email[] }> {
 
 export async function getSentEmails(): Promise<{ emails: Email[] }> {
   const res = await api.get('/emails/sent');
+  return res.data;
+}
+
+export async function toggleStarEmail(emailId: string): Promise<{ success: boolean; email: Email }> {
+  const res = await api.patch(`/emails/${emailId}/star`);
+  return res.data;
+}
+
+export async function deleteEmail(emailId: string): Promise<{ success: boolean; message: string }> {
+  const res = await api.delete(`/emails/${emailId}`);
   return res.data;
 }
 

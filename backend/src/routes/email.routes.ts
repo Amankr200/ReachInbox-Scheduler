@@ -1,11 +1,26 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db/prisma';
-import { addEmailJob } from '../queues/email.queue';
+import { addEmailJob, removeEmailJob, EmailJobAttachment } from '../queues/email.queue';
 import { esClient, EMAILS_INDEX } from '../config/elasticsearch';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'reachinbox_super_secret_jwt_key_2026';
+
+function formatEmail(em: any) {
+  let parsedAttachments = [];
+  if (em.attachments) {
+    try {
+      parsedAttachments = typeof em.attachments === 'string' ? JSON.parse(em.attachments) : em.attachments;
+    } catch {
+      parsedAttachments = [];
+    }
+  }
+  return {
+    ...em,
+    attachments: parsedAttachments,
+  };
+}
 
 // Middleware to extract logged-in user
 async function authMiddleware(req: Request, res: Response, next: Function) {
@@ -49,6 +64,7 @@ router.post('/schedule', authMiddleware, async (req: Request, res: Response) => 
       delay = 2000,
       hourlyLimit = 100,
       senderId,
+      attachments,
     } = req.body;
 
     if (!subject || !body || !recipients || !Array.isArray(recipients) || recipients.length === 0) {
@@ -64,6 +80,9 @@ router.post('/schedule', authMiddleware, async (req: Request, res: Response) => 
       const sender = await prisma.sender.findUnique({ where: { id: senderId } });
       if (sender) senderEmail = sender.email;
     }
+
+    const rawAttachments: EmailJobAttachment[] = Array.isArray(attachments) ? attachments : [];
+    const attachmentsJson = rawAttachments.length > 0 ? JSON.stringify(rawAttachments) : null;
 
     const createdEmails = [];
 
@@ -86,6 +105,7 @@ router.post('/schedule', authMiddleware, async (req: Request, res: Response) => 
           scheduledAt: new Date(Date.now() + jobDelay),
           delayMs: delay,
           hourlyLimit: hourlyLimit,
+          attachments: attachmentsJson,
         },
       });
 
@@ -101,6 +121,7 @@ router.post('/schedule', authMiddleware, async (req: Request, res: Response) => 
           body,
           delayMs: delay,
           hourlyLimit,
+          attachments: rawAttachments,
         },
         jobDelay
       );
@@ -132,7 +153,7 @@ router.post('/schedule', authMiddleware, async (req: Request, res: Response) => 
         // Silently continue if ES not running
       }
 
-      createdEmails.push(email);
+      createdEmails.push(formatEmail(email));
     }
 
     return res.json({
@@ -158,7 +179,7 @@ router.get('/scheduled', authMiddleware, async (req: Request, res: Response) => 
       },
       orderBy: { scheduledAt: 'asc' },
     });
-    return res.json({ emails });
+    return res.json({ emails: emails.map(formatEmail) });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch scheduled emails' });
   }
@@ -175,9 +196,65 @@ router.get('/sent', authMiddleware, async (req: Request, res: Response) => {
       },
       orderBy: { sentAt: 'desc' },
     });
-    return res.json({ emails });
+    return res.json({ emails: emails.map(formatEmail) });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch sent emails' });
+  }
+});
+
+// 4. Toggle Star / Favorite on Email
+router.patch('/:id/star', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+
+    const email = await prisma.email.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!email) {
+      return res.status(404).json({ error: 'Email not found' });
+    }
+
+    const updated = await prisma.email.update({
+      where: { id },
+      data: { isStarred: !email.isStarred },
+    });
+
+    return res.json({ success: true, email: formatEmail(updated) });
+  } catch (error) {
+    console.error(' Error toggling star:', error);
+    return res.status(500).json({ error: 'Failed to toggle star' });
+  }
+});
+
+// 5. Delete Email
+router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+
+    const email = await prisma.email.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!email) {
+      return res.status(404).json({ error: 'Email not found' });
+    }
+
+    // Cancel BullMQ job if still in queue
+    if (email.bullJobId) {
+      await removeEmailJob(email.bullJobId);
+    }
+
+    await prisma.email.delete({
+      where: { id },
+    });
+
+    return res.json({ success: true, message: 'Email deleted successfully' });
+  } catch (error) {
+    console.error(' Error deleting email:', error);
+    return res.status(500).json({ error: 'Failed to delete email' });
   }
 });
 

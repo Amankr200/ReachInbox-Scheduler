@@ -1,13 +1,20 @@
 import React from 'react';
 import { Email } from '../types';
-import { ArrowLeft, Star, Trash2, Archive, ExternalLink, MailCheck } from 'lucide-react';
+import { ArrowLeft, Star, Trash2, Archive, ExternalLink, MailCheck, Paperclip, FileText, Download } from 'lucide-react';
 
 interface EmailDetailModalProps {
   email: Email | null;
   onClose: () => void;
+  onToggleStar?: (email: Email) => void;
+  onDelete?: (email: Email) => void;
 }
 
-export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({ email, onClose }) => {
+export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({
+  email,
+  onClose,
+  onToggleStar,
+  onDelete,
+}) => {
   if (!email) return null;
 
   const senderLabel = email.senderEmail || 'scheduler@reachinbox.ai';
@@ -47,9 +54,43 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({ email, onClo
           </div>
 
           <div className="flex items-center gap-3 text-gray-400">
-            <Star className="w-4 h-4 cursor-pointer hover:text-amber-400" />
-            <Archive className="w-4 h-4 cursor-pointer hover:text-gray-600" />
-            <Trash2 className="w-4 h-4 cursor-pointer hover:text-red-500" />
+            {/* Interactive Star */}
+            <button
+              type="button"
+              onClick={() => onToggleStar && onToggleStar(email)}
+              className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer transition-colors"
+              title={email.isStarred ? 'Unstar' : 'Star'}
+            >
+              <Star
+                className={`w-5 h-5 transition-colors ${
+                  email.isStarred ? 'fill-amber-400 text-amber-400' : 'text-gray-400 hover:text-amber-400'
+                }`}
+              />
+            </button>
+
+            {/* Archive */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer transition-colors text-gray-400 hover:text-gray-600"
+              title="Archive"
+            >
+              <Archive className="w-5 h-5" />
+            </button>
+
+            {/* Interactive Delete */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete this email?')) {
+                  onDelete && onDelete(email);
+                }
+              }}
+              className="p-1.5 rounded-full hover:bg-red-50 cursor-pointer transition-colors text-gray-400 hover:text-red-500"
+              title="Delete Email"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -96,6 +137,49 @@ export const EmailDetailModal: React.FC<EmailDetailModalProps> = ({ email, onClo
           <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed whitespace-pre-line pt-2">
             {email.body}
           </div>
+
+          {/* Attachments Section */}
+          {email.attachments && email.attachments.length > 0 && (
+            <div className="border-t border-gray-100 pt-4 mt-2">
+              <h4 className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5 text-gray-400" />
+                <span>Attachments ({email.attachments.length})</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {email.attachments.map((att, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-xs transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 bg-white rounded-lg border border-gray-200 text-emerald-600">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 truncate max-w-[170px]" title={att.filename}>
+                          {att.filename}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          {Math.round(att.size / 1024)} KB
+                        </p>
+                      </div>
+                    </div>
+
+                    {att.content && (
+                      <a
+                        href={`data:${att.contentType || 'application/octet-stream'};base64,${att.content}`}
+                        download={att.filename}
+                        className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-all flex items-center gap-1"
+                        title={`Download ${att.filename}`}
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Banner Box (Matching Figma Screenshot 4 styling) */}
           <div className="bg-[#FFFDF0] border-l-4 border-amber-400 p-4 rounded-r-lg shadow-xs my-6">

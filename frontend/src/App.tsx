@@ -47,18 +47,14 @@ export function App() {
     }
   }, [token]);
 
-  // Fetch emails on tab or search change
-  useEffect(() => {
-    fetchEmails();
-  }, [token, activeTab, searchQuery]);
-
-  const fetchEmails = async () => {
+  const fetchEmails = async (tab?: 'scheduled' | 'sent') => {
+    const currentTab = tab ?? activeTab;
     setLoading(true);
     try {
       if (searchQuery.trim()) {
         const res = await searchEmails(searchQuery);
         const filtered = res.emails.filter((e) =>
-          activeTab === 'scheduled'
+          currentTab === 'scheduled'
             ? e.status === 'SCHEDULED' || e.status === 'PROCESSING'
             : e.status === 'SENT' || e.status === 'FAILED'
         );
@@ -73,7 +69,7 @@ export function App() {
         setSentEmails(sentRes.emails || []);
 
         setDisplayedEmails(
-          activeTab === 'scheduled' ? schedRes.emails || [] : sentRes.emails || []
+          currentTab === 'scheduled' ? schedRes.emails || [] : sentRes.emails || []
         );
       }
     } catch (err) {
@@ -82,6 +78,11 @@ export function App() {
       setLoading(false);
     }
   };
+
+  // Fetch emails on tab or search change
+  useEffect(() => {
+    if (token) fetchEmails(activeTab);
+  }, [token, activeTab, searchQuery]);
 
   const handleToggleStar = async (email: Email) => {
     // Optimistic UI update
@@ -139,6 +140,7 @@ export function App() {
         onSelectTab={(tab) => {
           setActiveTab(tab);
           setSearchQuery('');
+          fetchEmails(tab);
         }}
         onOpenCompose={() => setIsComposeOpen(true)}
         onLogout={handleLogout}

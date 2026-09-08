@@ -4,7 +4,7 @@ A full-stack email scheduling service built with Express + BullMQ + Redis + Post
 
 ---
 
-## 🎥 Web App Demo
+## Web App Demo
 
 [![Watch the Demo](https://img.youtube.com/vi/VlpsCQpDPSI/maxresdefault.jpg)](https://youtu.be/VlpsCQpDPSI)
 

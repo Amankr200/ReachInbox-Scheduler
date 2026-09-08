@@ -221,6 +221,14 @@ router.patch('/:id/star', authMiddleware, async (req: Request, res: Response) =>
       data: { isStarred: !email.isStarred },
     });
 
+    try {
+      await esClient.update({
+        index: EMAILS_INDEX,
+        id,
+        doc: { isStarred: updated.isStarred },
+      });
+    } catch (_) {}
+
     return res.json({ success: true, email: formatEmail(updated) });
   } catch (error) {
     console.error(' Error toggling star:', error);
@@ -250,6 +258,13 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
     await prisma.email.delete({
       where: { id },
     });
+
+    try {
+      await esClient.delete({
+        index: EMAILS_INDEX,
+        id,
+      });
+    } catch (_) {}
 
     return res.json({ success: true, message: 'Email deleted successfully' });
   } catch (error) {
